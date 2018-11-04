@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 project(hashtables)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 14)
 
-add_executable(hashtables main.cpp hashtable.cpp)
+add_executable(hashtables main.cpp hashtable.cpp prime_number_generator.cpp)

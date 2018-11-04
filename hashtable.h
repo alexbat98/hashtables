@@ -4,6 +4,7 @@
 #include <memory>
 #include <list>
 #include <functional>
+#include "prime_number_generator.h"
 
 template<class HolderKey, class HolderType>
 struct ItemHolder {
@@ -39,7 +40,10 @@ public:
                        const std::function<unsigned int(Key, uint64_t, uint64_t,
                                                         uint64_t, uint64_t)> &hash_function = default_hash_function)
             : m(m), hash_function(hash_function) {
-        p = 13; // todo replace with prime random number generator
+
+        prime_number_generator<unsigned long> g;
+
+        p = g.rand();
         a = 2;
         b = 5;
         data = new std::list<ItemHolder<Key, T>, A>[m];
@@ -67,7 +71,24 @@ public:
         data = src.data;
     }
 
-    hashtable &operator=(const hashtable &src) = delete;
+    hashtable &operator=(const hashtable &src) {
+
+        if (m != src.m) {
+            delete[] data;
+            data = new std::list<ItemHolder<Key, T> >[src.m];
+        }
+
+        a = src.a;
+        b = src.b;
+        p = src.p;
+        m = src.m;
+
+        for (int i = 0; i < m; i++) {
+            data[i] = src.data[i];
+        }
+
+        return *this;
+    };
 
     virtual ~hashtable() {
         delete [] data;
