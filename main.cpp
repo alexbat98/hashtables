@@ -3,6 +3,7 @@
 #include "hash_table.h"
 
 #include <chrono>
+#include <string>
 
 int main() {
 
@@ -45,6 +46,11 @@ int main() {
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms" << std::endl;
     std::cout << ht.collisions() << std::endl;
     std::cout << ht.max_chain_length() << std::endl;
+
+#ifdef PAUSE_ON_EXIT
+	std::cout << "Press any key to continue..." << std::endl;
+	std::cin.get();
+#endif
 
     return 0;
 }

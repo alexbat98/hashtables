@@ -44,9 +44,9 @@ private:
     }
 
 public:
-    explicit prime_number_generator(unsigned short bits = 32) {
-        auto max = static_cast<unsigned long>(2 ^ bits - 1);
-        auto min = static_cast<unsigned long>(2 ^ (bits - 1) + 1);
+    explicit prime_number_generator(unsigned long bits = 30) {
+        auto max = static_cast<T>((1UL << bits) - 1);
+        auto min = static_cast<T>((1UL << (bits - 1)) + 1);
 
         distribution = std::uniform_int_distribution<T>(min, max);
     };
