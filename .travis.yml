@@ -1,0 +1,51 @@
+language: cpp
+sudo: required
+dist: trusty
+notifications:
+  email:
+    on_success: never
+    on_failure: always
+
+matrix:
+  include:
+  - os: linux
+    name: "linux with gcc 7"
+    compiler: gcc-7
+    env:
+    - C_COMPILER=gcc-7
+    - CXX_COMPILER=g++-7
+    - USE_CCOV=true
+    addons:
+      apt:
+        sources:
+        - ubuntu-toolchain-r-test
+        packages:
+        - g++-7
+        - libopenblas-dev
+        - lcov
+    before_install:
+    - export CC=gcc-7
+    - export CXX=g++-7
+
+install:
+- DEPS_DIR="${HOME}/deps"
+- mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
+- |
+  if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
+    CMAKE_URL="https://cmake.org/files/v3.12/cmake-3.12.0-Linux-x86_64.tar.gz"
+    mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
+    export PATH=${DEPS_DIR}/cmake/bin:${PATH}
+  else
+    brew install cmake || brew upgrade cmake
+    brew install llvm
+    brew install libomp
+  fi
+- cmake --version
+
+script:
+- cd ${TRAVIS_BUILD_DIR}
+- mkdir build
+- cd build
+- export CXXFLAGS=${CI_CXX_FLAGS}
+- cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_OUTPUT_EXTENSION_REPLACE=ON ..
+- make
