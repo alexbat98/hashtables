@@ -3,6 +3,7 @@
 
 #include "hash_function.h"
 #include "prime_number_generator.h"
+#include <ctime>
 
 template <class Key>
 class generic_hash_function : public hash_function<Key> {
@@ -13,7 +14,7 @@ public:
   generic_hash_function() {
     prime_number_generator<unsigned long> g;
     p = g.rand();
-    long long seed = std::chrono::system_clock::now().time_since_epoch().count();
+    long long seed = std::time(nullptr);
     std::minstd_rand0 engine(static_cast<unsigned int>(seed));
     std::uniform_int_distribution<unsigned long> distribution(1, p - 1);
 

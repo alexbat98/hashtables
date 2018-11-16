@@ -103,10 +103,6 @@ public:
     if (data[idx].size() > 1) {
       collision_counter++;
     }
-
-    if (!disable_rebase && should_rebase(collision_counter, max_list_length)) {
-      rehash();
-    }
   }
 
   void add(const Key &key, T &item) {
