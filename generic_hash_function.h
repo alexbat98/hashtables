@@ -8,10 +8,10 @@
 template <class Key>
 class generic_hash_function : public hash_function<Key> {
 private:
-  unsigned long a, b, p;
+  unsigned long a, b, p, m;
 
 public:
-  generic_hash_function() {
+  generic_hash_function(size_t m) : m(m) {
     prime_number_generator<unsigned long> g;
     p = g.rand();
     long long seed = std::time(nullptr);
@@ -26,11 +26,12 @@ public:
     a = src.a;
     b = src.b;
     p = src.p;
+    m = src.m;
   }
 
   ~generic_hash_function() override = default;
 
-  size_t hash(const Key key, unsigned long m) override {
+  size_t hash(const Key key) override {
     return ((a * key + b) % p) % m;
   }
 };

@@ -1,13 +1,15 @@
 #include <iostream>
 
 #include "hash_table.h"
+#include "cuckoo_hash_table.h"
+#include "open_hash_table.h"
 
 #include <chrono>
 #include <string>
 
 int main() {
 
-    hash_table<int, std::string> ht(1500);
+    hash_table<int, std::string> ht;
 
     std::string str = "User";
     std::string str2 = "Another user";
@@ -44,8 +46,24 @@ int main() {
     auto end = std::chrono::system_clock::now();
 
     std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms" << std::endl;
-    std::cout << ht.collisions() << std::endl;
-    std::cout << ht.max_chain_length() << std::endl;
+
+    cuckoo_hash_table<int, std::string> cth;
+    cth.add(0, str);
+    cth.add(1, str);
+    cth.add(3, str);
+    cth.add(5, str);
+
+    std::cout << cth.has_key(0) << std::endl;
+    std::cout << cth.get(0) << std::endl;
+
+    open_hash_table<int, std::string> oth;
+    oth.add(0, str);
+    oth.add(1, str);
+    oth.add(3, str);
+    oth.add(5, str);
+
+    std::cout << oth.has_key(0) << std::endl;
+    std::cout << oth.get(0) << std::endl;
 
 #ifdef PAUSE_ON_EXIT
 	std::cout << "Press any key to continue..." << std::endl;

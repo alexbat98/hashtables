@@ -7,7 +7,7 @@
 #include "prime_number_generator.h"
 #include <algorithm>
 #include "hash_function.h"
-#include "generic_hash_function.h"
+#include "wiki_hash_function.h"
 
 template<class HolderKey, class HolderType>
 struct ItemHolder {
@@ -28,31 +28,28 @@ class hash_table {
 private:
 
   std::list<ItemHolder<Key, T>, A> *data;
-  const int m;
+  size_t m;
 
   std::shared_ptr<hash_function<Key> > mHashFunction;
-
-  uint64_t collision_counter;
-
-  size_t max_list_length;
+//
+//  uint64_t collision_counter;
+//
+//  size_t max_list_length;
 
 public:
-  explicit hash_table(const int m = 7,
-      std::shared_ptr<hash_function<Key> > hashFunction = std::make_shared<generic_hash_function<Key> >())
-      : m(m), mHashFunction(hashFunction), collision_counter(0),
-        max_list_length(0) {
+  explicit hash_table(
+      std::shared_ptr<hash_function<Key> > hashFunction = std::make_shared<wiki_hash_function<Key> >(sizeof(Key)))
+      : m(sizeof(Key)*10), mHashFunction(hashFunction) //, collision_counter(0),
+        /*max_list_length(0) */ {
 
     prime_number_generator<unsigned long> g;
-
-
-
 
     data = new std::list<ItemHolder<Key, T>, A>[m];
   };
 
   hash_table(const hash_table &src) noexcept {
     m = src.m;
-    collision_counter = src.collision_counter;
+    //collision_counter = src.collision_counter;
     mHashFunction = src.mHashFunction;
 
     data = new std::list<ItemHolder<Key, T> >[m];
@@ -84,25 +81,25 @@ public:
   };
 
   void add(const ItemHolder<Key, T> &item) {
-    size_t idx = mHashFunction->hash(item.key, (uint64_t) m);
+    size_t idx = mHashFunction->hash(item.key);
     data[idx].push_back(item);
 
-    max_list_length = std::max(data[idx].size(), max_list_length);
-
-    if (data[idx].size() > 1) {
-      collision_counter++;
-    }
+//    max_list_length = std::max(data[idx].size(), max_list_length);
+//
+//    if (data[idx].size() > 1) {
+//      collision_counter++;
+//    }
   }
 
   void add(const ItemHolder<Key, T> &&item, bool disable_rebase = false) {
-    size_t idx = mHashFunction->hash(item.key, (uint64_t) m);
+    size_t idx = mHashFunction->hash(item.key);
     data[idx].push_back(item);
 
-    max_list_length = std::max(data[idx].size(), max_list_length);
-
-    if (data[idx].size() > 1) {
-      collision_counter++;
-    }
+//    max_list_length = std::max(data[idx].size(), max_list_length);
+//
+//    if (data[idx].size() > 1) {
+//      collision_counter++;
+//    }
   }
 
   void add(const Key &key, T &item) {
@@ -111,7 +108,7 @@ public:
   };
 
   void remove(const Key &key) {
-    size_t idx = mHashFunction->hash(key, (uint64_t) m);
+    size_t idx = mHashFunction->hash(key);
 
     for (auto item : data[idx]) {
       if (item.key == key) {
@@ -122,7 +119,7 @@ public:
   };
 
   T &get(const Key &key) {
-    size_t idx = mHashFunction->hash(key, (uint64_t) m);
+    size_t idx = mHashFunction->hash(key);
 
     for (auto item : data[idx]) {
       if (item.key == key) {
@@ -136,7 +133,7 @@ public:
   };
 
   bool has_key(const Key &key) {
-    size_t idx = mHashFunction->hash(key, (uint64_t) m);
+    size_t idx = mHashFunction->hash(key);
 
     bool has_key_flag = false;
 
@@ -150,10 +147,9 @@ public:
     return has_key_flag;
   }
 
-  // todo add parameter to rehash
   void rehash() {
 
-    mHashFunction = std::make_shared<generic_hash_function<Key> >();
+    mHashFunction = std::make_shared<decltype(mHashFunction)>();
 
     auto *old_table = data;
     data = new std::list<ItemHolder<Key, T>, A>[m];
@@ -167,13 +163,13 @@ public:
     delete[] old_table;
   }
 
-  uint64_t collisions() {
-    return collision_counter;
-  }
-
-  size_t max_chain_length() {
-    return max_list_length;
-  }
+//  uint64_t collisions() {
+//    return collision_counter;
+//  }
+//
+//  size_t max_chain_length() {
+//    return max_list_length;
+//  }
 };
 
 #endif //HASHTABLES_HASHTABLE_H
