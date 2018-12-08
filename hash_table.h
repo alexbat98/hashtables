@@ -11,8 +11,8 @@
 
 template<class HolderKey, class HolderType>
 struct ItemHolder {
-  const HolderKey &key;
-  HolderType &data;
+  const HolderKey key;
+  HolderType data;
 
   ItemHolder(const HolderKey &key, HolderType &data) : key(key), data(data) {};
 
@@ -31,16 +31,26 @@ private:
   size_t m;
 
   std::shared_ptr<hash_function<Key> > mHashFunction;
-//
-//  uint64_t collision_counter;
-//
-//  size_t max_list_length;
+
+  size_t max_list_length;
+  size_t capacity;
+  size_t last_rehash_capacity;
+  size_t rehash_trigger_length;
 
 public:
   explicit hash_table(
-      std::shared_ptr<hash_function<Key> > hashFunction = std::make_shared<wiki_hash_function<Key> >(sizeof(Key)))
-      : m(sizeof(Key)*10), mHashFunction(hashFunction) //, collision_counter(0),
-        /*max_list_length(0) */ {
+      size_t m = 0,
+      std::shared_ptr<hash_function<Key> > hashFunction = std::make_shared<wiki_hash_function<Key> >(0))
+      : m(m), mHashFunction(hashFunction), capacity(0), last_rehash_capacity(0),
+        max_list_length(0) {
+
+    if (m == 0) {
+      m = 100000;
+    }
+
+    rehash_trigger_length = static_cast<size_t>(3*std::sqrt(m));
+
+    mHashFunction->update(m);
 
     prime_number_generator<unsigned long> g;
 
@@ -80,29 +90,20 @@ public:
     delete[] data;
   };
 
-  void add(const ItemHolder<Key, T> &item) {
+  void add(ItemHolder<Key, T> item, bool no_rehash = false) {
     size_t idx = mHashFunction->hash(item.key);
     data[idx].push_back(item);
 
-//    max_list_length = std::max(data[idx].size(), max_list_length);
-//
-//    if (data[idx].size() > 1) {
-//      collision_counter++;
-//    }
+    capacity++;
+    max_list_length = std::max(data[idx].size(), max_list_length);
+
+    if (!no_rehash && max_list_length > rehash_trigger_length && capacity - last_rehash_capacity > m / 5) {
+      last_rehash_capacity = capacity;
+      rehash();
+    }
   }
 
-  void add(const ItemHolder<Key, T> &&item, bool disable_rebase = false) {
-    size_t idx = mHashFunction->hash(item.key);
-    data[idx].push_back(item);
-
-//    max_list_length = std::max(data[idx].size(), max_list_length);
-//
-//    if (data[idx].size() > 1) {
-//      collision_counter++;
-//    }
-  }
-
-  void add(const Key &key, T &item) {
+  void add(const Key key, T item) {
     ItemHolder<Key, T> holder(key, item);
     add(holder);
   };
@@ -149,14 +150,23 @@ public:
 
   void rehash() {
 
-    mHashFunction = std::make_shared<decltype(mHashFunction)>();
+    capacity = 0;
+    max_list_length = 0;
+
+    size_t oldM = m;
+
+    if (capacity > static_cast<size_t>(0.7*m)) {
+      m *= 2;
+    }
+
+    mHashFunction->update(m);
 
     auto *old_table = data;
     data = new std::list<ItemHolder<Key, T>, A>[m];
 
-    for (int i = 0; i < m; ++i) {
-      for (auto item : old_table[i]) {
-        add(std::move(item), true);
+    for (int i = 0; i < oldM; ++i) {
+      for (auto &item : old_table[i]) {
+        add(item, true);
       }
     }
 

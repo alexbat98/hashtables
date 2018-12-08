@@ -48,10 +48,16 @@ private:
 
     wiki_hash_function<Key> hashFunction;
 
+    size_t capacity;
+    size_t last_rehash_capacity;
+
 public:
-    explicit open_hash_table(size_t m = sizeof(Key)*10) : m(m), hashFunction(wiki_hash_function<Key>(m)) {
+    explicit open_hash_table(size_t m = 0) : m(m), hashFunction(wiki_hash_function<Key>(m)) {
 
         mHashTable.reserve(m);
+
+        capacity = 0;
+        last_rehash_capacity = 0;
 
         for (size_t i = 0; i < m; i++) {
             mHashTable.emplace(mHashTable.begin() + i, OpenItemHolder<Key, T>());
@@ -69,8 +75,9 @@ public:
 
     virtual ~open_hash_table() = default;
 
-    void add(OpenItemHolder<Key, T> &item) {
+    void add(OpenItemHolder<Key, T> item, bool no_rehash = false) {
         Key hashKey = hashFunction.hash(item.key);
+        capacity++;
         if (mHashTable[hashKey].isEmpty) {
             mHashTable[hashKey] = item;
         } else {
@@ -79,6 +86,11 @@ public:
                 ++i;
             }
             mHashTable[(hashKey + i) % m] = item;
+
+            if (!no_rehash && i > m / 10 && capacity - last_rehash_capacity > m / 5) {
+                last_rehash_capacity = capacity;
+                rehash();
+            }
         }
     }
 
@@ -115,7 +127,7 @@ public:
     bool has_key(Key key) {
         size_t i = 0;
         Key hashKey = hashFunction.hash(key);
-        while (!mHashTable[(hashKey + i) % m].isEmpty) {
+        while (!mHashTable[(hashKey + i) % m].isEmpty && i < m) {
             if (mHashTable[(hashKey + i) % m].key == key) {
                 return true;
             } else {
@@ -126,9 +138,16 @@ public:
     }
 
     void rehash() {
-        hashFunction = wiki_hash_function<Key>(m);
+//        size_t  oldM = m;
+        if (capacity > static_cast<size_t >(0.6*m)) {
+            m *= 2;
+        }
 
-        auto &oldTable = mHashTable;
+        capacity = 0;
+
+        hashFunction.update(m);
+
+        auto oldTable = mHashTable;
 
         mHashTable = std::vector<OpenItemHolder<Key, T>, A>();
         mHashTable.reserve(m);
@@ -137,8 +156,8 @@ public:
             mHashTable.emplace(mHashTable.begin() + i, OpenItemHolder<Key, T>());
         }
 
-        for (auto &item : oldTable) {
-            add(item);
+        for (auto item : oldTable) {
+            add(item, true);
         }
     }
 };

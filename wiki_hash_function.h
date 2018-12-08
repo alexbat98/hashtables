@@ -8,20 +8,28 @@
 template <class Key>
 class wiki_hash_function : public hash_function<Key> {
 private:
-	unsigned long a, b, m;
+	size_t a, b, m, mBig;
+	std::random_device random_device;
+	std::mt19937 generator;
 
 public:
 	explicit wiki_hash_function(size_t m) : m(m) {
-		long long seed = std::time(nullptr);
-		std::minstd_rand0 engine(static_cast<unsigned int>(seed));
 
-		auto maxA = static_cast<size_t >(std::pow(2, m - 1) - 3);
-		std::uniform_int_distribution<unsigned long> distributionA(1, 2*maxA + 1);
-		a = distributionA(engine);
+		generator = std::mt19937(random_device());
+		update(m);
+	}
 
-		auto maxB = static_cast<size_t >(std::pow(2, sizeof(Key) - m));
+	void update(size_t m) {
+		this->m = m;
+		mBig = static_cast<size_t>(std::log2(m));
+
+		auto maxA = static_cast<size_t >(std::pow(2, mBig));
+		std::uniform_int_distribution<unsigned long> distributionA(1, maxA);
+		a = distributionA(generator);
+
+		auto maxB = static_cast<size_t >(std::pow(2, sizeof(Key)*8 - mBig));
 		std::uniform_int_distribution<unsigned long> distributionB(1, maxB);
-		b = distributionA(engine);
+		b = distributionB(generator);
 	}
 
 	wiki_hash_function(const wiki_hash_function& src) {
@@ -33,7 +41,7 @@ public:
 	~wiki_hash_function() override = default;
 
 	size_t hash(const Key key) override {
-		return (a*key + b) >> (sizeof(Key)*8 - m);
+		return (a*key + b) >> (sizeof(Key)*8 - mBig);
 	}
 };
 

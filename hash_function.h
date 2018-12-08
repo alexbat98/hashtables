@@ -8,6 +8,7 @@ class hash_function {
 public:
   virtual ~hash_function() = default;
   virtual size_t hash(Key key) = 0;
+  virtual void update(size_t m) {};
 };
 
 #endif //HASHTABLES_HASH_FUNCTION_H

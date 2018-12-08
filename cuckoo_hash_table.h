@@ -62,7 +62,7 @@ private:
     }
 
 public:
-    explicit cuckoo_hash_table(size_t m = sizeof(Key)*10) : m(m), a(0) {
+    explicit cuckoo_hash_table(size_t m = static_cast<size_t>(std::numeric_limits<Key>::max()*2)) : m(m), a(0) {
         generateCoefficient();
 
         t1.reserve(m);
@@ -84,47 +84,51 @@ public:
 
     virtual ~cuckoo_hash_table() = default;
 
-    void add(CuckooItemHolder<Key, T> &item) {
+    void add(CuckooItemHolder<Key, T> item) {
 
-        if (t1[h1(item.key)].isEmpty == true) {
-            t1[h1(item.key)] = item;
-        } else if (t2[h2(item.key)].isEmpty == true) {
-            t2[h2(item.key)] = item;
-        } else {
-            auto maxIterations = static_cast<uint64_t>(3 * log(std::numeric_limits<Key>::max()));
-            std::vector<CuckooItemHolder<Key, T> > cycle;
-            cycle.reserve(maxIterations);
+        bool itemSet = false;
+
+        while (!itemSet) {
+            if (t1[h1(item.key)].isEmpty == true) {
+                t1[h1(item.key)] = item;
+                itemSet = true;
+            } else if (t2[h2(item.key)].isEmpty == true) {
+                t2[h2(item.key)] = item;
+                itemSet = true;
+            } else {
+                auto
+                    maxIterations = static_cast<uint64_t>(3 * log(std::numeric_limits<Key>::max()));
+                std::vector<CuckooItemHolder<Key, T> > cycle;
+                cycle.reserve(maxIterations);
 //            for (size_t i = 0; i < maxIterations; i++) {
 //                cycle.emplace()
 //            }
-            size_t randomNumber;
+                size_t randomNumber;
 
-            std::default_random_engine generator;
-            std::uniform_int_distribution<Key> distribution(0, m);
-            randomNumber = distribution(generator);
-            size_t i = 0;
-            cycle[0] = t2[randomNumber];
+                std::default_random_engine generator;
+                std::uniform_int_distribution<Key> distribution(0, m);
+                randomNumber = distribution(generator);
+                size_t i = 0;
+                cycle[0] = t2[randomNumber];
 //            cycle[0].data = t2[randomNumber].data;
-            t2[randomNumber] = item;
-            for (i = 0; i < maxIterations; i++) {
-                if (t1[h1(cycle[i].key)].isEmpty == true) {
-                    for (size_t j = i; j > 0; j--) {
-                        t1[h1(cycle[j].key)] = cycle[j];
-                    }
-                    break;
-                } else {
-                    cycle[i + 1] = t1[h1(cycle[i].key)];
+                t2[randomNumber] = item;
+                for (i = 0; i < maxIterations; i++) {
+                    if (t1[h1(cycle[i].key)].isEmpty == true) {
+                        for (size_t j = i; j > 0; j--) {
+                            t1[h1(cycle[j].key)] = cycle[j];
+                        }
+                        break;
+                    } else {
+                        cycle[i + 1] = t1[h1(cycle[i].key)];
 //                    cycle[i + 1].data = mHashTable[h1(cycle[i].key)].data;
+                    }
+                }
+                if (i == maxIterations) {
+//                generateCoefficient();
+                    rehash();
                 }
             }
-            if (i == maxIterations) {
-//                generateCoefficient();
-                rehash();
-                add(item);
-            }
-
         }
-
     }
 
     void add(Key key, T item) {
@@ -154,8 +158,8 @@ public:
 
     void rehash() {
         generateCoefficient();
-        auto &t1Old = t1;
-        auto &t2Old = t2;
+        auto t1Old = t1;
+        auto t2Old = t2;
 
         t1 = std::vector<CuckooItemHolder<Key, T>, A>();
         t2 = std::vector<CuckooItemHolder<Key, T>, A>();
@@ -167,11 +171,11 @@ public:
             t2.emplace(t2.begin() + i, CuckooItemHolder<Key, T>());
         }
 
-        for (auto &item : t1Old) {
+        for (auto item : t1Old) {
             add(item);
         }
 
-        for (auto &item : t2Old) {
+        for (auto item : t2Old) {
             add(item);
         }
     }
