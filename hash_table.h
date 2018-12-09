@@ -8,178 +8,173 @@
 #include <algorithm>
 #include "hash_function.h"
 #include "wiki_hash_function.h"
+#include "k_independent_hash_function.h"
 
 template<class HolderKey, class HolderType>
 struct ItemHolder {
-  const HolderKey key;
-  HolderType data;
+    const HolderKey key;
+    HolderType data;
 
-  ItemHolder(const HolderKey &key, HolderType &data) : key(key), data(data) {};
+    ItemHolder(const HolderKey &key, HolderType &data) : key(key), data(data) {};
 
-  ItemHolder() = default;
+    ItemHolder() = default;
 
-  friend bool operator==(const ItemHolder &a, const ItemHolder &b) {
-    return a.key == b.key;
-  }
+    friend bool operator==(const ItemHolder &a, const ItemHolder &b) {
+        return a.key == b.key;
+    }
 };
 
 template<class Key, class T, class A = std::allocator<ItemHolder<Key, T>>>
 class hash_table {
 private:
 
-  std::list<ItemHolder<Key, T>, A> *data;
-  size_t m;
+    std::list<ItemHolder<Key, T>, A> *data;
+    size_t m;
 
-  std::shared_ptr<hash_function<Key> > mHashFunction;
+    std::shared_ptr<hash_function<Key> > mHashFunction;
 
-  size_t max_list_length;
-  size_t capacity;
-  size_t last_rehash_capacity;
-  size_t rehash_trigger_length;
+    size_t max_list_length;
+    size_t capacity;
+    size_t last_rehash_capacity;
+    size_t rehash_trigger_length;
 
 public:
-  explicit hash_table(
-      size_t m = 0,
-      std::shared_ptr<hash_function<Key> > hashFunction = std::make_shared<wiki_hash_function<Key> >(0))
-      : m(m), mHashFunction(hashFunction), capacity(0), last_rehash_capacity(0),
-        max_list_length(0) {
+    explicit hash_table(
+        size_t m = 0,
+        std::shared_ptr<hash_function<Key> > hashFunction = std::make_shared<
+            k_independent_hash_function<Key, 2> >(0))
+        : m(m), mHashFunction(hashFunction), capacity(0), last_rehash_capacity(0),
+          max_list_length(0) {
 
-    if (m == 0) {
-      m = 100000;
+        if (m == 0) {
+            m = 100000;
+        }
+
+        rehash_trigger_length = static_cast<size_t>(3 * std::sqrt(m));
+
+        mHashFunction->update(m);
+
+        prime_number_generator<unsigned long> g;
+
+        data = new std::list<ItemHolder<Key, T>, A>[m];
+    };
+
+    hash_table(const hash_table &src) noexcept {
+        m = src.m;
+        //collision_counter = src.collision_counter;
+        mHashFunction = src.mHashFunction;
+
+        data = new std::list<ItemHolder<Key, T> >[m];
+
+        for (int i = 0; i < m; i++) {
+            data[i] = src.data[i];
+        }
+    };
+
+    hash_table &operator=(const hash_table &src) {
+
+        if (m != src.m) {
+            delete[] data;
+            data = new std::list<ItemHolder<Key, T> >[src.m];
+        }
+
+        mHashFunction = src.mHashFunction;
+        m = src.m;
+
+        for (int i = 0; i < m; i++) {
+            data[i] = src.data[i];
+        }
+
+        return *this;
+    };
+
+    virtual ~hash_table() {
+        delete[] data;
+    };
+
+    void add(ItemHolder<Key, T> item, bool no_rehash = false) {
+        size_t idx = mHashFunction->hash(item.key);
+        data[idx].push_back(item);
+
+        capacity++;
+        max_list_length = std::max(data[idx].size(), max_list_length);
+
+        if (!no_rehash && max_list_length > rehash_trigger_length
+            && capacity - last_rehash_capacity > m / 15) {
+            last_rehash_capacity = capacity;
+            rehash();
+        }
     }
 
-    rehash_trigger_length = static_cast<size_t>(3*std::sqrt(m));
+    void add(const Key key, T item) {
+        ItemHolder<Key, T> holder(key, item);
+        add(holder);
+    };
 
-    mHashFunction->update(m);
+    void remove(const Key &key) {
+        size_t idx = mHashFunction->hash(key);
 
-    prime_number_generator<unsigned long> g;
+        for (auto item : data[idx]) {
+            if (item.key == key) {
+                data[idx].remove(item);
+                break;
+            }
+        }
+    };
 
-    data = new std::list<ItemHolder<Key, T>, A>[m];
-  };
+    T &get(const Key &key) {
+        size_t idx = mHashFunction->hash(key);
 
-  hash_table(const hash_table &src) noexcept {
-    m = src.m;
-    //collision_counter = src.collision_counter;
-    mHashFunction = src.mHashFunction;
+        for (auto item : data[idx]) {
+            if (item.key == key) {
+                return item.data;
+            }
+        }
 
-    data = new std::list<ItemHolder<Key, T> >[m];
+        T *res = new T;
 
-    for (int i = 0; i < m; i++) {
-      data[i] = src.data[i];
-    }
-  };
+        return *res;
+    };
 
-  hash_table &operator=(const hash_table &src) {
+    bool has_key(const Key &key) {
+        size_t idx = mHashFunction->hash(key);
 
-    if (m != src.m) {
-      delete[] data;
-      data = new std::list<ItemHolder<Key, T> >[src.m];
-    }
+        bool has_key_flag = false;
 
-    mHashFunction = src.mHashFunction;
-    m = src.m;
+        for (auto item : data[idx]) {
+            if (item.key == key) {
+                has_key_flag = true;
+                break;
+            }
+        }
 
-    for (int i = 0; i < m; i++) {
-      data[i] = src.data[i];
-    }
-
-    return *this;
-  };
-
-  virtual ~hash_table() {
-    delete[] data;
-  };
-
-  void add(ItemHolder<Key, T> item, bool no_rehash = false) {
-    size_t idx = mHashFunction->hash(item.key);
-    data[idx].push_back(item);
-
-    capacity++;
-    max_list_length = std::max(data[idx].size(), max_list_length);
-
-    if (!no_rehash && max_list_length > rehash_trigger_length && capacity - last_rehash_capacity > m / 5) {
-      last_rehash_capacity = capacity;
-      rehash();
-    }
-  }
-
-  void add(const Key key, T item) {
-    ItemHolder<Key, T> holder(key, item);
-    add(holder);
-  };
-
-  void remove(const Key &key) {
-    size_t idx = mHashFunction->hash(key);
-
-    for (auto item : data[idx]) {
-      if (item.key == key) {
-        data[idx].remove(item);
-        break;
-      }
-    }
-  };
-
-  T &get(const Key &key) {
-    size_t idx = mHashFunction->hash(key);
-
-    for (auto item : data[idx]) {
-      if (item.key == key) {
-        return item.data;
-      }
+        return has_key_flag;
     }
 
-    T* res = new T;
+    void rehash() {
 
-    return *res;
-  };
+        capacity = 0;
+        max_list_length = 0;
 
-  bool has_key(const Key &key) {
-    size_t idx = mHashFunction->hash(key);
+        size_t oldM = m;
 
-    bool has_key_flag = false;
+        if (capacity > static_cast<size_t>(0.7 * m)) {
+            m *= 2;
+        }
 
-    for (auto item : data[idx]) {
-      if (item.key == key) {
-        has_key_flag = true;
-        break;
-      }
+        mHashFunction->update(m);
+
+        auto *old_table = data;
+        data = new std::list<ItemHolder<Key, T>, A>[m];
+
+        for (int i = 0; i < oldM; ++i) {
+            for (auto &item : old_table[i]) {
+                add(item, true);
+            }
+        }
+
+        delete[] old_table;
     }
-
-    return has_key_flag;
-  }
-
-  void rehash() {
-
-    capacity = 0;
-    max_list_length = 0;
-
-    size_t oldM = m;
-
-    if (capacity > static_cast<size_t>(0.7*m)) {
-      m *= 2;
-    }
-
-    mHashFunction->update(m);
-
-    auto *old_table = data;
-    data = new std::list<ItemHolder<Key, T>, A>[m];
-
-    for (int i = 0; i < oldM; ++i) {
-      for (auto &item : old_table[i]) {
-        add(item, true);
-      }
-    }
-
-    delete[] old_table;
-  }
-
-//  uint64_t collisions() {
-//    return collision_counter;
-//  }
-//
-//  size_t max_chain_length() {
-//    return max_list_length;
-//  }
 };
 
 #endif //HASHTABLES_HASHTABLE_H

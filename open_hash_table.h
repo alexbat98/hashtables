@@ -5,8 +5,7 @@
 #include <cstdlib>
 #include <list>
 #include <functional>
-#include "prime_number_generator.h"
-#include "wiki_hash_function.h"
+#include "k_independent_hash_function.h"
 #include <algorithm>
 
 template<class HolderKey, class HolderType>
@@ -46,13 +45,13 @@ private:
 
     size_t m;
 
-    wiki_hash_function<Key> hashFunction;
+    k_independent_hash_function<Key, 5> hashFunction;
 
     size_t capacity;
     size_t last_rehash_capacity;
 
 public:
-    explicit open_hash_table(size_t m = 0) : m(m), hashFunction(wiki_hash_function<Key>(m)) {
+    explicit open_hash_table(size_t m = 0) : m(m), hashFunction(k_independent_hash_function<Key, 5>(m)) {
 
         mHashTable.reserve(m);
 
@@ -76,7 +75,7 @@ public:
     virtual ~open_hash_table() = default;
 
     void add(OpenItemHolder<Key, T> item, bool no_rehash = false) {
-        Key hashKey = hashFunction.hash(item.key);
+        size_t hashKey = hashFunction.hash(item.key);
         capacity++;
         if (mHashTable[hashKey].isEmpty) {
             mHashTable[hashKey] = item;
@@ -126,7 +125,7 @@ public:
 
     bool has_key(Key key) {
         size_t i = 0;
-        Key hashKey = hashFunction.hash(key);
+        size_t hashKey = hashFunction.hash(key);
         while (!mHashTable[(hashKey + i) % m].isEmpty && i < m) {
             if (mHashTable[(hashKey + i) % m].key == key) {
                 return true;
@@ -138,7 +137,6 @@ public:
     }
 
     void rehash() {
-//        size_t  oldM = m;
         if (capacity > static_cast<size_t >(0.6*m)) {
             m *= 2;
         }

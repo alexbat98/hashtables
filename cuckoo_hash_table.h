@@ -6,6 +6,8 @@
 #include <list>
 #include <functional>
 #include "prime_number_generator.h"
+#include "k_independent_hash_function.h"
+#include "wiki_hash_function.h"
 #include <algorithm>
 
 template<class HolderKey, class HolderType>
@@ -44,26 +46,19 @@ private:
     std::vector<CuckooItemHolder<Key, T>, A> t1;
     std::vector<CuckooItemHolder<Key, T>, A> t2;
 
-    size_t a, m;
+    size_t m, maxIterations;
 
-    void generateCoefficient() {
-        std::minstd_rand0 engine(static_cast<unsigned int>(std::time(nullptr)));
-        std::uniform_int_distribution<unsigned long> distribution(1, m);
-        a = distribution(engine);
-    }
+    k_independent_hash_function<Key, 5> hash_function1;
+    k_independent_hash_function<Key, 5> hash_function2;
 
-    Key h1(Key key) {
-        return key % a;
-
-    }
-
-    Key h2(Key key) {
-        return (key / a) % a;
-    }
+    size_t capacity{};
 
 public:
-    explicit cuckoo_hash_table(size_t m = static_cast<size_t>(std::numeric_limits<Key>::max()*2)) : m(m), a(0) {
-        generateCoefficient();
+    explicit cuckoo_hash_table(size_t m = 10000) : m(m*2) {
+        hash_function1.update(m);
+        hash_function2.update(m);
+
+        maxIterations = static_cast<size_t>(3*std::log(m));
 
         t1.reserve(m);
         t2.reserve(m);
@@ -85,50 +80,43 @@ public:
     virtual ~cuckoo_hash_table() = default;
 
     void add(CuckooItemHolder<Key, T> item) {
+        size_t h1 = hash_function1.hash(item.key);
+        size_t h2 = hash_function2.hash(item.key);
 
-        bool itemSet = false;
-
-        while (!itemSet) {
-            if (t1[h1(item.key)].isEmpty == true) {
-                t1[h1(item.key)] = item;
-                itemSet = true;
-            } else if (t2[h2(item.key)].isEmpty == true) {
-                t2[h2(item.key)] = item;
-                itemSet = true;
-            } else {
-                auto
-                    maxIterations = static_cast<uint64_t>(3 * log(std::numeric_limits<Key>::max()));
-                std::vector<CuckooItemHolder<Key, T> > cycle;
-                cycle.reserve(maxIterations);
-//            for (size_t i = 0; i < maxIterations; i++) {
-//                cycle.emplace()
-//            }
-                size_t randomNumber;
-
-                std::default_random_engine generator;
-                std::uniform_int_distribution<Key> distribution(0, m);
-                randomNumber = distribution(generator);
-                size_t i = 0;
-                cycle[0] = t2[randomNumber];
-//            cycle[0].data = t2[randomNumber].data;
-                t2[randomNumber] = item;
-                for (i = 0; i < maxIterations; i++) {
-                    if (t1[h1(cycle[i].key)].isEmpty == true) {
-                        for (size_t j = i; j > 0; j--) {
-                            t1[h1(cycle[j].key)] = cycle[j];
-                        }
-                        break;
-                    } else {
-                        cycle[i + 1] = t1[h1(cycle[i].key)];
-//                    cycle[i + 1].data = mHashTable[h1(cycle[i].key)].data;
-                    }
-                }
-                if (i == maxIterations) {
-//                generateCoefficient();
-                    rehash();
-                }
-            }
+        if (has_key(item.key)) {
+            get(item.key) = item.data;
         }
+
+        if (t1[hash_function1.hash(item.key)].isEmpty) {
+            t1[hash_function1.hash(item.key)] = item;
+        } else if (t2[hash_function2.hash(item.key)].isEmpty) {
+            t2[hash_function2.hash(item.key)] = item;
+        } else {
+            for (size_t i = 0; i < maxIterations; i++) {
+                CuckooItemHolder<Key, T> tempItem = t1[hash_function1.hash(item.key)];
+                t1[hash_function1.hash(item.key)] = item;
+                item = tempItem;
+
+                if (item.isEmpty) {
+                    capacity++;
+                    return;
+                }
+
+                tempItem = t2[hash_function2.hash(item.key)];
+                t2[hash_function2.hash(item.key)] = item;
+                item = tempItem;
+
+                if (item.isEmpty) {
+                    capacity++;
+                    return;
+                }
+
+            }
+
+            rehash();
+            add(item);
+        }
+        capacity++;
     }
 
     void add(Key key, T item) {
@@ -145,19 +133,29 @@ public:
     };
 
     T &get(Key key) {
-        if (t1[h1(key)].key == key && !t1[h1(key)].isEmpty) {
-            return t1[h1(key)].data;
-        } else if (t2[h2(key)].key == key && !t2[h2(key)].isEmpty) {
-            return t2[h2(key)].data;
+        if (t1[hash_function1.hash(key)].key == key && !t1[hash_function1.hash(key)].isEmpty) {
+            return t1[hash_function1.hash(key)].data;
+        } else if (t2[hash_function2.hash(key)].key == key && !t2[hash_function2.hash(key)].isEmpty) {
+            return t2[hash_function2.hash(key)].data;
         }
     };
 
     bool has_key(Key key) {
-        return (t1[h1(key)].key == key && !t1[h1(key)].isEmpty) || (t2[h2(key)].key == key && !t2[h2(key)].isEmpty);
+        return (t1[hash_function1.hash(key)].key == key && !t1[hash_function1.hash(key)].isEmpty)
+                || (t2[hash_function2.hash(key)].key == key && !t2[hash_function2.hash(key)].isEmpty);
     }
 
     void rehash() {
-        generateCoefficient();
+
+        if (capacity > m / 4) {
+            m *= 2;
+        }
+
+        hash_function1.update(m);
+        hash_function2.update(m);
+
+        //maxIterations = static_cast<size_t>(3*std::log2(m));
+
         auto t1Old = t1;
         auto t2Old = t2;
 
@@ -172,11 +170,15 @@ public:
         }
 
         for (auto item : t1Old) {
-            add(item);
+            if (!item.isEmpty) {
+                add(item);
+            }
         }
 
         for (auto item : t2Old) {
-            add(item);
+            if (!item.isEmpty) {
+                add(item);
+            }
         }
     }
 };
