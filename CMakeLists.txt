@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.0)
 project(hashtables)
 
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 14)
 
 option(PAUSE_ON_EXIT "Do not close console immideately before exit" ON)
 

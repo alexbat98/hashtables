@@ -70,10 +70,30 @@ public:
     };
 
     cuckoo_hash_table(const cuckoo_hash_table &src) noexcept {
+        t1 = src.t1;
+        t2 = src.t2;
 
+        m = src.m;
+        maxIterations = src.maxIterations;
+
+        hash_function1 = src.hash_function1;
+        hash_function2 = src.hash_function2;
+
+        capacity = src.capacity;
     };
 
     cuckoo_hash_table &operator=(const cuckoo_hash_table &src) {
+        t1 = src.t1;
+        t2 = src.t2;
+
+        m = src.m;
+        maxIterations = src.maxIterations;
+
+        hash_function1 = src.hash_function1;
+        hash_function2 = src.hash_function2;
+
+        capacity = src.capacity;
+
         return *this;
     };
 
@@ -125,10 +145,10 @@ public:
     };
 
     void remove(Key key) {
-        if (t1[h1(key)].key == key) {
-            t1[h1(key)] = CuckooItemHolder<Key, T>();
-        } else if (t2[h2(key)].key == key) {
-            t2[h2(key)] = CuckooItemHolder<Key, T>();
+        if (t1[hash_function1.hash(key)].key == key) {
+            t1[hash_function1.hash(key)] = CuckooItemHolder<Key, T>();
+        } else if (t2[hash_function2.hash(key)].key == key) {
+            t2[hash_function2.hash(key)] = CuckooItemHolder<Key, T>();
         }
     };
 

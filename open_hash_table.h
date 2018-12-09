@@ -66,9 +66,18 @@ public:
     open_hash_table(const open_hash_table &src) noexcept {
         m = src.m;
         mHashTable = src.mHashTable;
+        hashFunction = src.hashFunction;
+        capacity = src.capacity;
+        last_rehash_capacity = src.last_rehash_capacity;
     };
 
     open_hash_table &operator=(const open_hash_table &src) {
+        m = src.m;
+        mHashTable = src.mHashTable;
+        hashFunction = src.hashFunction;
+        capacity = src.capacity;
+        last_rehash_capacity = src.last_rehash_capacity;
+
         return *this;
     };
 
@@ -100,7 +109,7 @@ public:
 
     void remove(Key key) {
         size_t i = 0;
-        Key hashKey = hashFunction.hash(key);
+        size_t hashKey = hashFunction.hash(key);
         while (!mHashTable[(hashKey + i) % m].isEmpty) {
             if (mHashTable[(hashKey + i) % m].key == key) {
                 mHashTable[(hashKey + i) % m] = OpenItemHolder<Key, T>();
@@ -113,7 +122,7 @@ public:
 
     T &get(Key key) {
         size_t i = 0;
-        Key hashKey = hashFunction.hash(key);
+        size_t hashKey = hashFunction.hash(key);
         while (!mHashTable[(hashKey + i) % m].isEmpty) {
             if (mHashTable[(hashKey + i) % m].key == key) {
                 return mHashTable[(hashKey + i) % m].data;

@@ -13,7 +13,7 @@ private:
     size_t m;
 //    const uint64_t p = 2305843009213693951L;
     int currentP;
-    std::array<uint64_t, 5> primes{{100123456789L, 3763863863761L, 146263628637547L, 355693655479801L, 923291713111753L}};
+    const std::array<uint64_t, 5> primes{{691096906169011L, 979853562951413L, 146263628637547L, 355693655479801L, 923291713111753L}};
     std::random_device random_device;
     std::mt19937 generator;
     std::uniform_int_distribution<size_t > distribution;
@@ -25,6 +25,28 @@ public:
         update(m);
     }
 
+    k_independent_hash_function(const k_independent_hash_function &src) {
+        a = src.a;
+        m = src.m;
+        currentP = src.currentP;
+
+//        random_device = src.random_device;
+        generator = src.generator;
+        distribution = src.distribution;
+    }
+
+    k_independent_hash_function &operator=(const k_independent_hash_function &src) {
+        a = src.a;
+        m = src.m;
+        currentP = src.currentP;
+
+//        random_device = src.random_device;
+        generator = src.generator;
+        distribution = src.distribution;
+
+        return *this;
+    }
+
     void update(size_t m) override {
         this->m = m;
         currentP = (currentP + 1) % 5;
@@ -34,12 +56,6 @@ public:
         for (int i = 0; i < k; i++) {
             a[i] = distribution(generator);
         }
-    }
-
-    k_independent_hash_function(const k_independent_hash_function& src) {
-        a = src.a;
-        m = src.m;
-        currentP = src.currentP;
     }
 
     ~k_independent_hash_function() override = default;

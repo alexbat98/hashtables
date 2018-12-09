@@ -61,7 +61,10 @@ public:
 
     hash_table(const hash_table &src) noexcept {
         m = src.m;
-        //collision_counter = src.collision_counter;
+        max_list_length = src.max_list_length;
+        capacity = src.capacity;
+        last_rehash_capacity = src.last_rehash_capacity;
+        rehash_trigger_length = src.rehash_trigger_length;
         mHashFunction = src.mHashFunction;
 
         data = new std::list<ItemHolder<Key, T> >[m];
@@ -69,6 +72,37 @@ public:
         for (int i = 0; i < m; i++) {
             data[i] = src.data[i];
         }
+    };
+
+    hash_table(hash_table &&src) noexcept {
+        m = src.m;
+        max_list_length = src.max_list_length;
+        capacity = src.capacity;
+        last_rehash_capacity = src.last_rehash_capacity;
+        rehash_trigger_length = src.rehash_trigger_length;
+        mHashFunction = src.mHashFunction;
+        src.mHashFunction = nullptr;
+
+        data = src.data;
+
+        src.data = nullptr;
+    };
+
+    hash_table &operator=(hash_table &&src) {
+
+        m = src.m;
+        max_list_length = src.max_list_length;
+        capacity = src.capacity;
+        last_rehash_capacity = src.last_rehash_capacity;
+        rehash_trigger_length = src.rehash_trigger_length;
+        mHashFunction = src.mHashFunction;
+        src.mHashFunction = nullptr;
+
+        data = src.data;
+
+        src.data = nullptr;
+
+        return *this;
     };
 
     hash_table &operator=(const hash_table &src) {
