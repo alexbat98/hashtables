@@ -158,6 +158,8 @@ public:
         } else if (t2[hash_function2.hash(key)].key == key && !t2[hash_function2.hash(key)].isEmpty) {
             return t2[hash_function2.hash(key)].data;
         }
+        throw std::runtime_error("");
+//        return ;
     };
 
     bool has_key(Key key) {

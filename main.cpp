@@ -3,13 +3,13 @@
 #include "hash_table.h"
 #include "cuckoo_hash_table.h"
 #include "open_hash_table.h"
-#include "k_independent_hash_function.h"
+//#include "k_independent_hash_function.h"
 
 #include <chrono>
 #include <string>
 #include <memory>
 
-std::string gen_random(const int len) {
+std::string &gen_random(const int len) {
 
     char *str = new char[len+1];
 
@@ -23,20 +23,19 @@ std::string gen_random(const int len) {
     }
     str[len] = '\0';
 
-    std::string res(str);
-    return res;
+    auto *res = new std::string(str);
+    return *res;
 }
 
 int main() {
     std::random_device random_device;
     std::mt19937 generator(random_device());
-    std::uniform_int_distribution<int> distribution10k(0, 1500000000);
-    std::uniform_int_distribution<uint64_t> distribution5b(0, 5000000000000);
+    std::uniform_int_distribution<int> distribution10k(0, 990000000);
+    std::uniform_int_distribution<uint64_t > distribution5b(0, 50000000000);
+//    std::binomial_distribution<int> distribution10k(70000000, 40000000);
+//    std::binomial_distribution<double> distribution5b(90000000, 80000000);
 
-//    std::cout << "Type;int_add;int_get;uint64_add;uint64_get" << std::endl;
-
-
-    uint64_t count[] = {5000, 10000, 50000, 100000};
+    uint64_t count[] = {50000, 100000, 500000, 1000000};
 
     std::vector<int> dataInt;
     std::vector<uint64_t> dataInt64;
@@ -50,7 +49,7 @@ int main() {
     cuckoo_hash_table<uint64_t, uint64_t> cuckooHashTable_uint;
     open_hash_table<uint64_t, uint64_t> openHashTable_uint;
 
-    hash_table<std::string, uint64_t> hashTable_string(0, std::make_shared<k_independent_hash_function<std::string, 5>>());
+    hash_table<std::string, uint64_t> hashTable_string;
     cuckoo_hash_table<std::string, uint64_t> cuckooHashTable_string;
     open_hash_table<std::string, uint64_t> openHashTable_string;
 
@@ -68,7 +67,7 @@ int main() {
 
             // INTEGER
             for (int i = 0; i < k; i++) {
-                dataInt[i] = distribution10k(generator);
+                dataInt[i] = static_cast<int>(distribution10k(generator));
             }
 
             hashTable_int = hash_table<int, int>(mult * k);
@@ -79,7 +78,7 @@ int main() {
             auto start = std::chrono::steady_clock::now();
             for (size_t i = 0; i < k; i++) {
                 int key = dataInt[i];
-                int value = distribution10k(generator);
+                int value = static_cast<int>(distribution10k(generator));
 
                 hashTable_int.add(key, value);
             }
@@ -108,7 +107,7 @@ int main() {
             start = std::chrono::steady_clock::now();
             for (size_t i = 0; i < k; i++) {
                 int key = dataInt[i];
-                int value = distribution10k(generator);
+                int value = static_cast<int>(distribution10k(generator));
 
                 cuckooHashTable_int.add(key, value);
             }
@@ -137,7 +136,7 @@ int main() {
             start = std::chrono::steady_clock::now();
             for (size_t i = 0; i < k; i++) {
                 int key = dataInt[i];
-                int value = distribution10k(generator);
+                int value = static_cast<int>(distribution10k(generator));
 
                 openHashTable_int.add(key, value);
             }
@@ -167,7 +166,7 @@ int main() {
             // INT64
 
             for (int i = 0; i < k; i++) {
-                dataInt64[i] = distribution5b(generator);
+                dataInt64[i] = static_cast<uint64_t>(distribution5b(generator));
             }
 
             hashTable_uint64 = hash_table<uint64_t, uint64_t>(mult * k);
@@ -178,7 +177,7 @@ int main() {
             start = std::chrono::steady_clock::now();
             for (size_t i = 0; i < k; i++) {
                 uint64_t key = dataInt64[i];
-                uint64_t value = distribution5b(generator);
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
 
                 hashTable_uint64.add(key, value);
             }
@@ -207,7 +206,7 @@ int main() {
             start = std::chrono::steady_clock::now();
             for (size_t i = 0; i < k; i++) {
                 uint64_t key = dataInt64[i];
-                uint64_t value = distribution5b(generator);
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
 
                 cuckooHashTable_uint.add(key, value);
             }
@@ -237,7 +236,7 @@ int main() {
             start = std::chrono::steady_clock::now();
             for (size_t i = 0; i < k; i++) {
                 uint64_t key = dataInt64[i];
-                uint64_t value = distribution5b(generator);
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
 
                 openHashTable_uint.add(key, value);
             }
@@ -266,7 +265,7 @@ int main() {
             // STRINGS
 
             for (int i = 0; i < k; i++) {
-                dataString[i] = std::move(gen_random(15));
+                dataString.insert(dataString.begin() + i, gen_random(8));
             }
 
             std::vector<bool> reading_base;
@@ -282,7 +281,7 @@ int main() {
             start = std::chrono::steady_clock::now();
             for (size_t i = 0; i < k; i++) {
                 std::string key = dataString[i];
-                uint64_t value = distribution5b(generator);
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
 
                 hashTable_string.add(key, value);
             }
@@ -312,7 +311,7 @@ int main() {
             start = std::chrono::steady_clock::now();
             for (size_t i = 0; i < k; i++) {
                 std::string key = dataString[i];
-                uint64_t value = distribution5b(generator);
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
 
                 cuckooHashTable_string.add(key, value);
             }
@@ -342,7 +341,7 @@ int main() {
             start = std::chrono::steady_clock::now();
             for (size_t i = 0; i < k; i++) {
                 std::string key = dataString[i];
-                uint64_t value = distribution5b(generator);
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
 
                 openHashTable_string.add(key, value);
             }

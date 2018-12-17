@@ -31,7 +31,7 @@ public:
 
   ~generic_hash_function() override = default;
 
-  size_t hash(const Key key) override {
+  uint64_t hash(const Key &key) override {
     return ((a * key + b) % p) % m;
   }
 };

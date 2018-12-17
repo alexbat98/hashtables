@@ -3,11 +3,8 @@
 
 #include <memory>
 #include <list>
-#include <functional>
-#include "prime_number_generator.h"
+//#include <functional>
 #include <algorithm>
-#include "hash_function.h"
-#include "wiki_hash_function.h"
 #include "k_independent_hash_function.h"
 
 template<class HolderKey, class HolderType>
@@ -42,7 +39,7 @@ public:
     explicit hash_table(
         size_t m = 0,
         std::shared_ptr<hash_function<Key> > hashFunction = std::make_shared<
-            k_independent_hash_function<Key, 2> >(0))
+            k_independent_hash_function<Key, 5> >(0))
         : m(m), mHashFunction(hashFunction), capacity(0), last_rehash_capacity(0),
           max_list_length(0) {
 
@@ -53,8 +50,6 @@ public:
         rehash_trigger_length = static_cast<size_t>(3 * std::sqrt(m));
 
         mHashFunction->update(m);
-
-        prime_number_generator<unsigned long> g;
 
         data = new std::list<ItemHolder<Key, T>, A>[m];
     };
