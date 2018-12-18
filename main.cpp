@@ -1,56 +1,378 @@
 #include <iostream>
 
 #include "hash_table.h"
+#include "cuckoo_hash_table.h"
+#include "open_hash_table.h"
+//#include "k_independent_hash_function.h"
 
 #include <chrono>
 #include <string>
+#include <memory>
+#include <unordered_set>
+
+std::string &gen_random(const int len) {
+
+    char *str = new char[len+1];
+
+    static const char alphanum[] =
+        "abcdefghijklmnopqrstuvwxyz";
+
+    for (int i = 0; i < len; ++i) {
+        str[i] = (alphanum[std::rand() % (sizeof(alphanum) - 1)]);
+    }
+    str[len] = '\0';
+
+    auto *res = new std::string(str);
+    return *res;
+}
 
 int main() {
+    std::random_device random_device;
+    std::default_random_engine generator(random_device());
+//    std::uniform_int_distribution<int> distribution10k(0, 999900000);
+//    std::uniform_int_distribution<uint64_t > distribution5b(0, 99000000000);
+    std::normal_distribution<float> distribution10k(8000000, 1000000);
+    std::normal_distribution<double> distribution5b(8000000, 1000000);
 
-    hash_table<int, std::string> ht(1500);
+    uint64_t count[] = {50000, 100000, 500000, 1000000};
 
-    std::string str = "User";
-    std::string str2 = "Another user";
+    std::vector<int> dataInt;
+    std::vector<uint64_t> dataInt64;
+    std::vector<std::string> dataString;
 
-    ht.add(3, str);
-    ht.add(34569, str2);
+    hash_table<int, int> hashTable_int;
+    cuckoo_hash_table<int, int> cuckooHashTable_int;
+    open_hash_table<int, int> openHashTable_int;
 
-    std::string res = ht.get(3);
+    hash_table<uint64_t, uint64_t> hashTable_uint64;
+    cuckoo_hash_table<uint64_t, uint64_t> cuckooHashTable_uint;
+    open_hash_table<uint64_t, uint64_t> openHashTable_uint;
 
-    std::cout << res << std::endl;
+    hash_table<std::string, uint64_t> hashTable_string;
+    cuckoo_hash_table<std::string, uint64_t> cuckooHashTable_string;
+    open_hash_table<std::string, uint64_t> openHashTable_string;
 
-    ht.remove(3);
+    for (int mult = 1; mult < 3; mult++) {
+        for (unsigned long long k : count) {
 
-    res = ht.get(34569);
+            dataInt.clear();
+            dataInt64.clear();
+            dataString.clear();
 
-    std::cout << res << std::endl;
-
-    bool has = ht.has_key(3);
-
-    std::cout << has << std::endl;
+            dataInt.reserve(k);
+            dataInt64.reserve(k);
+            dataString.reserve(k);
 
 
-    long long seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::minstd_rand0 engine(static_cast<unsigned int>(seed));
-    std::uniform_int_distribution<int > distribution(1, 50000);
+            // INTEGER
+            for (int i = 0; i < k; i++) {
+                dataInt.insert(dataInt.begin() + i, static_cast<int>(distribution10k(generator)));
+            }
 
-    auto start = std::chrono::system_clock::now();
-    for (int i = 0; i < 1000000; i++) {
-        int key = distribution(engine);
-        std::string value = "value";
+            hashTable_int = hash_table<int, int>(mult * k);
+            cuckooHashTable_int = cuckoo_hash_table<int, int>(mult * k);
+            openHashTable_int = open_hash_table<int, int>(mult * k);
 
-        ht.add(key, value);
+            // add
+            auto start = std::chrono::steady_clock::now();
+            for (auto i : dataInt) {
+                int key = i;
+                int value = static_cast<int>(distribution10k(generator));
+
+                hashTable_int.add(key, value);
+            }
+            auto end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // search
+            start = std::chrono::steady_clock::now();
+            for (auto i : dataInt) {
+                int key = i;
+                hashTable_int.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // remove
+            start = std::chrono::steady_clock::now();
+            for (auto i : dataInt) {
+                int key = i;
+                hashTable_int.remove(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // add
+            start = std::chrono::steady_clock::now();
+            for (auto i : dataInt) {
+                int key = i;
+                int value = static_cast<int>(distribution10k(generator));
+
+                cuckooHashTable_int.add(key, value);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // search
+            start = std::chrono::steady_clock::now();
+            for (auto i : dataInt) {
+                int key = i;
+                cuckooHashTable_int.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // remove
+            start = std::chrono::steady_clock::now();
+            for (auto i : dataInt) {
+                int key = i;
+                cuckooHashTable_int.remove(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // add
+            start = std::chrono::steady_clock::now();
+            for (auto i : dataInt) {
+                int key = i;
+                int value = static_cast<int>(distribution10k(generator));
+
+                openHashTable_int.add(key, value);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // search
+            start = std::chrono::steady_clock::now();
+            for (auto i : dataInt) {
+                int key = i;
+                openHashTable_int.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // remove
+            start = std::chrono::steady_clock::now();
+            for (auto i : dataInt) {
+                int key = i;
+                openHashTable_int.remove(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+
+
+            // INT64
+
+            for (int i = 0; i < k; i++) {
+                dataInt64[i] = static_cast<uint64_t>(distribution5b(generator));
+            }
+
+            hashTable_uint64 = hash_table<uint64_t, uint64_t>(mult * k);
+            cuckooHashTable_uint = cuckoo_hash_table<uint64_t, uint64_t>(mult * k);
+            openHashTable_uint = open_hash_table<uint64_t, uint64_t>(mult * k);
+
+            // add
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                uint64_t key = dataInt64[i];
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
+
+                hashTable_uint64.add(key, value);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // search
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                uint64_t key = dataInt64[i];
+                hashTable_uint64.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // remove
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                uint64_t key = dataInt64[i];
+                hashTable_uint64.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // add
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                uint64_t key = dataInt64[i];
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
+
+                cuckooHashTable_uint.add(key, value);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // search
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                uint64_t key = dataInt64[i];
+                cuckooHashTable_uint.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // remove
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                uint64_t key = dataInt64[i];
+                cuckooHashTable_uint.remove(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+
+            // add
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                uint64_t key = dataInt64[i];
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
+
+                openHashTable_uint.add(key, value);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // search
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                uint64_t key = dataInt64[i];
+                openHashTable_uint.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // remove
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                uint64_t key = dataInt64[i];
+                openHashTable_uint.remove(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+
+            // STRINGS
+
+            for (int i = 0; i < k; i++) {
+                dataString.insert(dataString.begin() + i, gen_random(8));
+            }
+
+            std::vector<bool> reading_base;
+            reading_base.reserve(k);
+
+            hashTable_string
+                = hash_table<std::string, uint64_t> (mult * k,
+                    std::make_shared<k_independent_hash_function<std::string, 5>>());
+            cuckooHashTable_string = cuckoo_hash_table<std::string, uint64_t> (mult * k);
+            openHashTable_string = open_hash_table<std::string, uint64_t>(mult * k);
+
+            // add
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                std::string key = dataString[i];
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
+
+                hashTable_string.add(key, value);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // search
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                std::string key = dataString[i];
+                reading_base[i] = hashTable_string.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // remove
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                std::string key = dataString[i];
+                hashTable_string.remove(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+
+            // add
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                std::string key = dataString[i];
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
+
+                cuckooHashTable_string.add(key, value);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // search
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                std::string key = dataString[i];
+                reading_base[i] = cuckooHashTable_string.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // remove
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                std::string key = dataString[i];
+                cuckooHashTable_string.remove(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+
+            // add
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                std::string key = dataString[i];
+                uint64_t value = static_cast<uint64_t>(distribution5b(generator));
+
+                openHashTable_string.add(key, value);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // search
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                std::string key = dataString[i];
+                reading_base[i] = openHashTable_string.has_key(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            // remove
+            start = std::chrono::steady_clock::now();
+            for (size_t i = 0; i < k; i++) {
+                std::string key = dataString[i];
+                openHashTable_string.remove(key);
+            }
+            end = std::chrono::steady_clock::now();
+            std::cout << std::chrono::duration<double, std::milli>(end - start).count() << ";";
+
+            std::cout << std::endl;
+        }
     }
-    auto end = std::chrono::system_clock::now();
 
-    std::cout << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << "ms" << std::endl;
-    std::cout << ht.collisions() << std::endl;
-    std::cout << ht.max_chain_length() << std::endl;
-
-#ifdef PAUSE_ON_EXIT
-	std::cout << "Press any key to continue..." << std::endl;
-	std::cin.get();
-#endif
+//#ifdef PAUSE_ON_EXIT
+//	std::cout << "Press any key to continue..." << std::endl;
+//	std::cin.get();
+//#endif
 
     return 0;
 }
